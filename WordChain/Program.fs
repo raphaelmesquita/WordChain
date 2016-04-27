@@ -44,46 +44,51 @@ let createWordChains getDerivedWordChains startWord endWord =
                    |> Seq.concat
                    |> yieldWordChains
         }
-    yieldWordChains [ [ startWord ] ] |> Seq.filter (fun x -> List.last x = endWord)
+    yieldWordChains [ [ startWord ] ]
 
-//let checkForMatch startWord endWord mapAndResult wordChain = 
-//    let mapStart, mapEnd, _ = mapAndResult
-//    match wordChain with
-//    | [] -> (mapStart, mapEnd, None)
-//    | list -> 
-//        let firstWord = List.head list
-//        let lastWord = List.last list
-//        if firstWord = startWord then 
-//            let mapStart = Map.add lastWord list mapStart
-//            match Map.tryFind lastWord mapEnd with
-//            | None -> (mapStart, mapEnd, None)
-//            | Some cachedList -> 
-//                let result = 
-//                    cachedList
-//                    |> List.rev
-//                    |> List.tail
-//                    |> List.append list
-//                (mapStart, mapEnd, Some result)
-//        else 
-//            let mapEnd = Map.add lastWord list mapEnd
-//            match Map.tryFind lastWord mapStart with
-//            | None -> (mapStart, mapEnd, None)
-//            | Some cachedList -> 
-//                let result = 
-//                    list
-//                    |> List.rev
-//                    |> List.skip 1
-//                    |> List.append cachedList
-//                (mapStart, mapEnd, Some result)
-//
-//let createParallelWordChains createWordChains checkForMatch onNext onError onComplete startWord endWord count = 
-//    let startToEnd = createWordChains startWord endWord |> Observable.toObservable
-//    let endToStart = createWordChains endWord startWord |> Observable.toObservable
-//    Observable.merge startToEnd endToStart
-//    |> Observable.scan (checkForMatch startWord endWord) (Map.empty, Map.empty, None)
-//    |> Observable.choose (fun (_, _, result) -> result)
-//    |> Observable.take count
-//    |> Observable.subscribe onNext onError onComplete
+let checkForMatch startWord endWord mapAndResult wordChain = 
+    let mapStart, mapEnd, _ = mapAndResult
+    match wordChain with
+    | [] -> (mapStart, mapEnd, None)
+    | chain -> 
+        let assembleMatchAndReturnResult mapStart mapEnd startList endList = 
+            let result = 
+                endList
+                |> List.rev
+                |> List.tail
+                |> List.append startList
+            (mapStart, mapEnd, Some result)
+        
+        let lastWord = List.last chain
+        match List.head chain with
+        | w when w = startWord -> 
+            let mapStart = Map.add lastWord chain mapStart
+            match Map.tryFind lastWord mapEnd with
+            | None -> (mapStart, mapEnd, None)
+            | Some cachedChain -> assembleMatchAndReturnResult mapStart mapEnd chain cachedChain
+        | w when w = endWord -> 
+            let mapEnd = Map.add lastWord chain mapEnd
+            match Map.tryFind lastWord mapStart with
+            | None -> (mapStart, mapEnd, None)
+            | Some cachedChain -> assembleMatchAndReturnResult mapStart mapEnd cachedChain chain
+        | invalidWord -> failwith <| sprintf "Invalid list head: %s" invalidWord
+
+let stopwatch = System.Diagnostics.Stopwatch()
+
+let createParallelWordChains createWordChains checkForMatch onNext onError onComplete startWord endWord count = 
+    stopwatch.Start()
+    let startToEnd = createWordChains startWord endWord |> Observable.toObservable
+    let endToStart = createWordChains endWord startWord |> Observable.toObservable
+    
+    Observable.merge startToEnd endToStart
+    |> Observable.scan (checkForMatch startWord endWord) (Map.empty, Map.empty, None)
+    |> Observable.choose (fun (_, _, result) -> result)
+    |> Observable.take count
+    |> Observable.subscribe onNext onError onComplete
+
+let onNext wordChain = printfn "%A" wordChain
+let onComplete() = printfn "Completed in %d ms" stopwatch.ElapsedMilliseconds
+let onError = raise
 
 // Composicao
 let words = 
@@ -97,15 +102,11 @@ let getSameLengthWords' = getSameLengthWords getWordsOfLength'
 let getAdjacents' = getAdjacents checkAdjacency getSameLengthWords' |> memoize
 let getDerivedWordChains' = getDerivedWordChains getAdjacents'
 let createWordChains' = createWordChains getDerivedWordChains'
-
+let createParallelWordChains' = createParallelWordChains createWordChains' checkForMatch onNext onError onComplete
 
 [<EntryPoint>]
 let main argv = 
-    let stopwatch = System.Diagnostics.Stopwatch.StartNew()
-    createWordChains' "cat" "dog" //argv.[0] argv.[1]
-    |> Seq.head
-    |> printfn "%A"
-    stopwatch.Stop()
-    printfn "Completed in %d ms" stopwatch.ElapsedMilliseconds
+    let obv = createParallelWordChains' argv.[0] argv.[1] 1 //
+    obv.Dispose()
     System.Console.ReadLine() |> ignore
     0
