@@ -89,7 +89,7 @@ let createWordChains getDerivedWordChains startWord endWord =
 let words = 
     System.IO.File.ReadLines "wordlist.txt"
     |> List.ofSeq
-    // |> List.map (fun x -> x.ToLowerInvariant())
+    |> List.map (fun x -> x.ToLowerInvariant())
     |> List.distinct
 
 let getWordsOfLength' = getWordsOfLength words |> memoize
