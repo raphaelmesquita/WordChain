@@ -1,5 +1,4 @@
 ﻿open System.Collections.Generic
-open FSharp.Reactive.Observable
 
 let memoize f = 
     let cache = Dictionary<_, _>()
@@ -23,10 +22,6 @@ let checkAdjacency word1 word2 =
     |> List.length
     |> (=) 1
 
-//    |> List.map (fun (word1, word2) -> 
-//           if word1 = word2 then 0
-//           else 1)
-//    |> List.sum
 let getAdjacents checkAdjacency getSameLengthWords word = getSameLengthWords word |> List.filter (checkAdjacency word)
 
 let getDerivedWordChains getAdjacents wordChain = 
