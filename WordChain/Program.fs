@@ -1,9 +1,18 @@
-﻿open System.Collections.Generic
-open FSharp.Reactive
-open FSharp.Reactive.Observable
+﻿open FSharp.Reactive
+open System.Diagnostics
+
+let memoizeMap f = 
+    let mutable cache = Map.empty
+    fun x -> 
+        match cache.TryFind(x) with
+        | None -> 
+            let res = f x
+            cache <- cache.Add(x, res)
+            res
+        | Some res -> res
 
 let memoize f = 
-    let cache = Dictionary<_, _>()
+    let cache = System.Collections.Concurrent.ConcurrentDictionary<_, _>()
     fun x -> 
         let ok, res = cache.TryGetValue(x)
         if ok then res
@@ -73,13 +82,9 @@ let checkForMatch startWord endWord mapAndResult wordChain =
             | Some cachedChain -> assembleMatchAndReturnResult mapStart mapEnd cachedChain chain
         | invalidWord -> failwith <| sprintf "Invalid list head: %s" invalidWord
 
-let stopwatch = System.Diagnostics.Stopwatch()
-
 let createParallelWordChains createWordChains checkForMatch onNext onError onComplete startWord endWord count = 
-    stopwatch.Start()
     let startToEnd = createWordChains startWord endWord |> Observable.toObservable
     let endToStart = createWordChains endWord startWord |> Observable.toObservable
-    
     Observable.merge startToEnd endToStart
     |> Observable.scan (checkForMatch startWord endWord) (Map.empty, Map.empty, None)
     |> Observable.choose (fun (_, _, result) -> result)
@@ -87,7 +92,11 @@ let createParallelWordChains createWordChains checkForMatch onNext onError onCom
     |> Observable.subscribe onNext onError onComplete
 
 let onNext wordChain = printfn "%A" wordChain
-let onComplete() = printfn "Completed in %d ms" stopwatch.ElapsedMilliseconds
+
+let onComplete (stopwatch : Stopwatch) () = 
+    stopwatch.Stop()
+    printfn "Completed in %d ms." stopwatch.ElapsedMilliseconds
+
 let onError = raise
 
 // Composicao
@@ -102,10 +111,13 @@ let getSameLengthWords' = getSameLengthWords getWordsOfLength'
 let getAdjacents' = getAdjacents checkAdjacency getSameLengthWords' |> memoize
 let getDerivedWordChains' = getDerivedWordChains getAdjacents'
 let createWordChains' = createWordChains getDerivedWordChains'
-let createParallelWordChains' = createParallelWordChains createWordChains' checkForMatch onNext onError onComplete
+let stopwatch = Stopwatch()
+let onComplete' = onComplete stopwatch
+let createParallelWordChains' = createParallelWordChains createWordChains' checkForMatch onNext onError onComplete'
 
 [<EntryPoint>]
 let main argv = 
+    stopwatch.Start()
     let obv = createParallelWordChains' argv.[0] argv.[1] 1 //
     obv.Dispose()
     0
