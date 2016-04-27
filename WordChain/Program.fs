@@ -60,10 +60,9 @@ let createWordChains' = createWordChains getDerivedWordChains'
 [<EntryPoint>]
 let main argv = 
     let stopwatch = System.Diagnostics.Stopwatch.StartNew()
-    createWordChains' "cat" "dog" //argv.[0] argv.[1]
+    createWordChains' argv.[0] argv.[1]
     |> Seq.head
     |> printfn "%A"
     stopwatch.Stop()
     printfn "Completed in %d ms" stopwatch.ElapsedMilliseconds
-    System.Console.ReadLine() |> ignore
     0
