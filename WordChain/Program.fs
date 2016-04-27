@@ -1,4 +1,5 @@
 ﻿open System.Collections.Generic
+open FSharp.Reactive
 open FSharp.Reactive.Observable
 
 let memoize f = 
@@ -49,6 +50,47 @@ let createWordChains getDerivedWordChains startWord endWord =
         }
     yieldWordChains [ [ startWord ] ] |> Seq.filter (fun x -> List.last x = endWord)
 
+let checkForMatch startWord endWord mapAndResult wordChain = 
+    let mapStart, mapEnd, _ = mapAndResult
+    match wordChain with
+    | [] -> (mapStart, mapEnd, None)
+    | list -> 
+        let firstWord = List.head list
+        let lastWord = List.last list
+        if firstWord = startWord then 
+            let mapStart = Map.add lastWord list mapStart
+            match Map.tryFind lastWord mapEnd with
+            | None -> (mapStart, mapEnd, None)
+            | Some cachedList -> 
+                let result = 
+                    cachedList
+                    |> List.rev
+                    |> List.skip 1
+                    |> List.append list
+                (mapStart, mapEnd, Some result)
+        else 
+            let mapEnd = Map.add lastWord list mapEnd
+            match Map.tryFind lastWord mapStart with
+            | None -> (mapStart, mapEnd, None)
+            | Some cachedList -> 
+                let result = 
+                    list
+                    |> List.rev
+                    |> List.skip 1
+                    |> List.append cachedList
+                (mapStart, mapEnd, Some result)
+
+let onNext =
+
+let createParallelWordChains createWordChains checkForMatch onNext onError onComplete startWord endWord count = 
+    let startToEnd = createWordChains startWord endWord |> Observable.toObservable
+    let endToStart = createWordChains endWord startWord |> Observable.toObservable
+    Observable.merge startToEnd endToStart
+    |> Observable.scan (checkForMatch startWord endWord) (Map.empty, Map.empty, None)
+    |> Observable.choose (fun (_, _, result) -> result)
+    |> Observable.take count
+    |> Observable.subscribe onNext onError onComplete
+
 // Composicao
 let words = 
     System.IO.File.ReadLines "wordlist.txt"
@@ -61,6 +103,7 @@ let getSameLengthWords' = getSameLengthWords getWordsOfLength'
 let getAdjacents' = getAdjacents checkAdjacency getSameLengthWords' |> memoize
 let getDerivedWordChains' = getDerivedWordChains getAdjacents'
 let createWordChains' = createWordChains getDerivedWordChains'
+
 
 [<EntryPoint>]
 let main argv = 
