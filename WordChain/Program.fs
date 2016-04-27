@@ -108,5 +108,4 @@ let createParallelWordChains' = createParallelWordChains createWordChains' check
 let main argv = 
     let obv = createParallelWordChains' argv.[0] argv.[1] 1 //
     obv.Dispose()
-    System.Console.ReadLine() |> ignore
     0
