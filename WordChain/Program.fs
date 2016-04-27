@@ -24,10 +24,6 @@ let checkAdjacency word1 word2 =
     |> List.length
     |> (=) 1
 
-//    |> List.map (fun (word1, word2) -> 
-//           if word1 = word2 then 0
-//           else 1)
-//    |> List.sum
 let getAdjacents checkAdjacency getSameLengthWords word = getSameLengthWords word |> List.filter (checkAdjacency word)
 
 let getDerivedWordChains getAdjacents wordChain = 
@@ -50,46 +46,44 @@ let createWordChains getDerivedWordChains startWord endWord =
         }
     yieldWordChains [ [ startWord ] ] |> Seq.filter (fun x -> List.last x = endWord)
 
-let checkForMatch startWord endWord mapAndResult wordChain = 
-    let mapStart, mapEnd, _ = mapAndResult
-    match wordChain with
-    | [] -> (mapStart, mapEnd, None)
-    | list -> 
-        let firstWord = List.head list
-        let lastWord = List.last list
-        if firstWord = startWord then 
-            let mapStart = Map.add lastWord list mapStart
-            match Map.tryFind lastWord mapEnd with
-            | None -> (mapStart, mapEnd, None)
-            | Some cachedList -> 
-                let result = 
-                    cachedList
-                    |> List.rev
-                    |> List.skip 1
-                    |> List.append list
-                (mapStart, mapEnd, Some result)
-        else 
-            let mapEnd = Map.add lastWord list mapEnd
-            match Map.tryFind lastWord mapStart with
-            | None -> (mapStart, mapEnd, None)
-            | Some cachedList -> 
-                let result = 
-                    list
-                    |> List.rev
-                    |> List.skip 1
-                    |> List.append cachedList
-                (mapStart, mapEnd, Some result)
-
-let onNext =
-
-let createParallelWordChains createWordChains checkForMatch onNext onError onComplete startWord endWord count = 
-    let startToEnd = createWordChains startWord endWord |> Observable.toObservable
-    let endToStart = createWordChains endWord startWord |> Observable.toObservable
-    Observable.merge startToEnd endToStart
-    |> Observable.scan (checkForMatch startWord endWord) (Map.empty, Map.empty, None)
-    |> Observable.choose (fun (_, _, result) -> result)
-    |> Observable.take count
-    |> Observable.subscribe onNext onError onComplete
+//let checkForMatch startWord endWord mapAndResult wordChain = 
+//    let mapStart, mapEnd, _ = mapAndResult
+//    match wordChain with
+//    | [] -> (mapStart, mapEnd, None)
+//    | list -> 
+//        let firstWord = List.head list
+//        let lastWord = List.last list
+//        if firstWord = startWord then 
+//            let mapStart = Map.add lastWord list mapStart
+//            match Map.tryFind lastWord mapEnd with
+//            | None -> (mapStart, mapEnd, None)
+//            | Some cachedList -> 
+//                let result = 
+//                    cachedList
+//                    |> List.rev
+//                    |> List.tail
+//                    |> List.append list
+//                (mapStart, mapEnd, Some result)
+//        else 
+//            let mapEnd = Map.add lastWord list mapEnd
+//            match Map.tryFind lastWord mapStart with
+//            | None -> (mapStart, mapEnd, None)
+//            | Some cachedList -> 
+//                let result = 
+//                    list
+//                    |> List.rev
+//                    |> List.skip 1
+//                    |> List.append cachedList
+//                (mapStart, mapEnd, Some result)
+//
+//let createParallelWordChains createWordChains checkForMatch onNext onError onComplete startWord endWord count = 
+//    let startToEnd = createWordChains startWord endWord |> Observable.toObservable
+//    let endToStart = createWordChains endWord startWord |> Observable.toObservable
+//    Observable.merge startToEnd endToStart
+//    |> Observable.scan (checkForMatch startWord endWord) (Map.empty, Map.empty, None)
+//    |> Observable.choose (fun (_, _, result) -> result)
+//    |> Observable.take count
+//    |> Observable.subscribe onNext onError onComplete
 
 // Composicao
 let words = 

@@ -9,7 +9,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>WordChain</RootNamespace>
     <AssemblyName>WordChain</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>WordChain</Name>
